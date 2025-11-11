@@ -8,25 +8,23 @@ namespace AgentWikiChat.Services.Handlers;
 /// <summary>
 /// Handler para consultas a bases de datos (SQL Server, PostgreSQL, MySQL, etc.)
 /// SEGURIDAD: Solo permite consultas SELECT. Bloqueado: UPDATE, DELETE, INSERT, EXEC, etc.
-/// Soporta múltiples proveedores de bases de datos mediante IDatabaseHandler.
+/// Soporta múltiples proveedores de bases de datos mediante IDatabaseHandler con patrón multi-provider.
 /// </summary>
 public class DatabaseToolHandler : IToolHandler
 {
     private readonly IDatabaseHandler _dbHandler;
-    private readonly int _maxRowsToReturn;
-    private readonly bool _enableLogging;
+    private readonly DatabaseProviderConfig _providerConfig;
     private readonly bool _debugMode = true;
 
     public DatabaseToolHandler(IConfiguration configuration)
     {
-        // Crear handler apropiado usando factory
+        // Crear handler apropiado usando factory (multi-provider)
         _dbHandler = DatabaseHandlerFactory.CreateHandler(configuration);
+        
+        // Obtener configuración del proveedor activo
+        _providerConfig = DatabaseHandlerFactory.GetActiveProviderConfig(configuration);
 
-        var dbConfig = configuration.GetSection("Database");
-        _maxRowsToReturn = dbConfig.GetValue("MaxRowsToReturn", 1000);
-        _enableLogging = dbConfig.GetValue("EnableQueryLogging", true);
-
-        LogDebug($"[Database] Inicializado - Provider: {_dbHandler.ProviderName}, MaxRows: {_maxRowsToReturn}");
+        LogDebug($"[Database] Inicializado - Provider: {_providerConfig.Name} ({_dbHandler.ProviderName}), MaxRows: {_providerConfig.MaxRowsToReturn}");
     }
 
     public string ToolName => "query_database";
@@ -39,7 +37,7 @@ public class DatabaseToolHandler : IToolHandler
             Function = new FunctionDefinition
             {
                 Name = ToolName,
-                Description = $"Ejecuta consultas SELECT en la base de datos ({_dbHandler.ProviderName}). SOLO LECTURA - No permite modificaciones (INSERT, UPDATE, DELETE). Usa esta herramienta para obtener información de tablas, ejecutar queries, o generar reportes basados en datos.",
+                Description = $"Ejecuta consultas SELECT en la base de datos ({_providerConfig.Name} - {_dbHandler.ProviderName}). SOLO LECTURA - No permite modificaciones (INSERT, UPDATE, DELETE). Usa esta herramienta para obtener información de tablas, ejecutar queries, o generar reportes basados en datos.",
                 Parameters = new FunctionParameters
                 {
                     Type = "object",
@@ -53,7 +51,7 @@ public class DatabaseToolHandler : IToolHandler
                         ["max_rows"] = new PropertyDefinition
                         {
                             Type = "string",
-                            Description = $"Número máximo de filas a retornar (por defecto: {_maxRowsToReturn}). Usa valores menores para queries grandes."
+                            Description = $"Número máximo de filas a retornar (por defecto: {_providerConfig.MaxRowsToReturn}). Usa valores menores para queries grandes."
                         }
                     },
                     Required = new List<string> { "query" }
@@ -65,7 +63,7 @@ public class DatabaseToolHandler : IToolHandler
     public async Task<string> HandleAsync(ToolParameters parameters, MemoryService memory)
     {
         var query = parameters.GetString("query");
-        var maxRowsStr = parameters.GetString("max_rows", _maxRowsToReturn.ToString());
+        var maxRowsStr = parameters.GetString("max_rows", _providerConfig.MaxRowsToReturn.ToString());
 
         if (string.IsNullOrWhiteSpace(query))
         {
@@ -75,13 +73,13 @@ public class DatabaseToolHandler : IToolHandler
         // Validar que el máximo de filas sea un número válido
         if (!int.TryParse(maxRowsStr, out var maxRows))
         {
-            maxRows = _maxRowsToReturn;
+            maxRows = _providerConfig.MaxRowsToReturn;
         }
 
         // Limitar el máximo de filas al configurado
-        if (maxRows > _maxRowsToReturn)
+        if (maxRows > _providerConfig.MaxRowsToReturn)
         {
-            maxRows = _maxRowsToReturn;
+            maxRows = _providerConfig.MaxRowsToReturn;
         }
 
         LogDebug($"[Database] Query recibida: {TruncateForDisplay(query, 200)}");
@@ -102,7 +100,7 @@ public class DatabaseToolHandler : IToolHandler
             var result = await _dbHandler.ExecuteQueryAsync(query, maxRows);
             
             // Guardar en memoria modular
-            memory.AddToModule("database", "system", $"Query ejecutada: {TruncateForDisplay(query, 100)} - Rows: {result.RowCount}");
+            memory.AddToModule("database", "system", $"Query ejecutada en {_providerConfig.Name}: {TruncateForDisplay(query, 100)} - Rows: {result.RowCount}");
 
             // Formatear salida
             return FormatQueryResult(result, query);
@@ -110,7 +108,7 @@ public class DatabaseToolHandler : IToolHandler
         catch (Exception ex)
         {
             LogError($"[Database] Error: {ex.Message}");
-            return $"❌ **Error en {_dbHandler.ProviderName}**\n\n" +
+            return $"❌ **Error en {_providerConfig.Name} ({_dbHandler.ProviderName})**\n\n" +
                    $"**Mensaje**: {ex.Message}\n\n" +
                    $"💡 Verifica la sintaxis de tu consulta SQL y que la tabla/columna exista.";
         }
@@ -125,7 +123,8 @@ public class DatabaseToolHandler : IToolHandler
     {
         var output = new StringBuilder();
 
-        output.AppendLine($"📊 **Resultado de la Consulta ({_dbHandler.ProviderName})**\n");
+        output.AppendLine($"📊 **Resultado de la Consulta**\n");
+        output.AppendLine($"**Proveedor**: {_providerConfig.Name} ({_dbHandler.ProviderName})");
         
         // Mostrar query ejecutada (truncada)
         output.AppendLine($"**Query**: `{TruncateForDisplay(query, 200)}`");
@@ -177,7 +176,7 @@ public class DatabaseToolHandler : IToolHandler
 
     private void LogDebug(string message)
     {
-        if (_debugMode && _enableLogging)
+        if (_debugMode && _providerConfig.EnableQueryLogging)
         {
             Console.ForegroundColor = ConsoleColor.DarkGray;
             Console.WriteLine($"[DEBUG] {message}");

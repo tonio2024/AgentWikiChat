@@ -7,19 +7,25 @@ namespace AgentWikiChat.Services.Handlers;
 /// <summary>
 /// Handler genérico para operaciones con repositorios de control de versiones.
 /// SEGURIDAD: Solo permite operaciones de lectura. Bloqueado: commit, delete, update, etc.
-/// Usa el patrón de factory para soportar múltiples proveedores (SVN, Git, Mercurial, TFS, etc.)
+/// Usa el patrón de factory para soportar múltiples proveedores (SVN, Git, GitHub, etc.) con patrón multi-provider.
 /// </summary>
 public class RepositoryToolHandler : IToolHandler
 {
     private readonly IVersionControlHandler _versionControlHandler;
+    private readonly RepositoryProviderConfig _providerConfig;
     private readonly bool _debugMode;
 
     public RepositoryToolHandler(IConfiguration configuration)
     {
         _debugMode = configuration.GetValue("Ui:Debug", true);
 
-        // Crear handler específico usando factory
+        // Crear handler específico usando factory (multi-provider)
         _versionControlHandler = VersionControlHandlerFactory.CreateHandler(configuration);
+        
+        // Obtener configuración del proveedor activo
+        _providerConfig = VersionControlHandlerFactory.GetActiveProviderConfig(configuration);
+
+        LogDebug($"[Repository] Inicializado - Provider: {_providerConfig.Name} ({_versionControlHandler.ProviderName})");
     }
 
     public string ToolName => $"{_versionControlHandler.ProviderName.ToLower()}_operation";
@@ -34,7 +40,7 @@ public class RepositoryToolHandler : IToolHandler
             Function = new FunctionDefinition
             {
                 Name = ToolName,
-                Description = $"Ejecuta operaciones de SOLO LECTURA en repositorios {_versionControlHandler.ProviderName} ({string.Join(", ", allowedOps)}). NO permite modificaciones (commit, delete, add, update). Usa esta herramienta para consultar historial, ver archivos, obtener información del repositorio.",
+                Description = $"Ejecuta operaciones de SOLO LECTURA en repositorios {_versionControlHandler.ProviderName} ({_providerConfig.Name}) - Operaciones: {string.Join(", ", allowedOps)}. NO permite modificaciones (commit, delete, add, update). Usa esta herramienta para consultar historial, ver archivos, obtener información del repositorio.",
                 Parameters = new FunctionParameters
                 {
                     Type = "object",
@@ -113,7 +119,7 @@ public class RepositoryToolHandler : IToolHandler
 
             // Guardar en memoria modular
             memory.AddToModule(_versionControlHandler.ProviderName.ToLower(), "system",
-                $"{_versionControlHandler.ProviderName} {operation} ejecutado: {path} @ {revision}");
+                $"{_providerConfig.Name}: {operation} ejecutado: {path} @ {revision}");
 
             return FormatResult(operation, result, operationParams);
         }
@@ -131,7 +137,7 @@ public class RepositoryToolHandler : IToolHandler
             var errorMessage = ex.Message;
             var suggestions = _versionControlHandler.GetErrorSuggestions(errorMessage);
 
-            return $"? **Error en {_versionControlHandler.ProviderName}**\n\n" +
+            return $"? **Error en {_providerConfig.Name} ({_versionControlHandler.ProviderName})**\n\n" +
                    $"**Mensaje**: {errorMessage}\n\n" +
                    suggestions;
         }
@@ -153,7 +159,7 @@ public class RepositoryToolHandler : IToolHandler
 
     private void LogDebug(string message)
     {
-        if (_debugMode)
+        if (_debugMode && _providerConfig.EnableLogging)
         {
             Console.ForegroundColor = ConsoleColor.DarkGray;
             Console.WriteLine($"[DEBUG] {message}");
