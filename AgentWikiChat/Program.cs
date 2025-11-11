@@ -75,7 +75,7 @@ try
     services.AddSingleton<IToolHandler, WikipediaHandler>();  // Expone 2 tools: search + article
     services.AddSingleton<IToolHandler, RAGToolHandler>();     // Para RAG general (futuro)
     services.AddSingleton<IToolHandler>(sp => new DatabaseToolHandler(sp.GetRequiredService<IConfiguration>()));
-    services.AddSingleton<IToolHandler, SVNRepositoryToolHandler>();
+    services.AddSingleton<IToolHandler>(sp => new SVNRepositoryToolHandler(sp.GetRequiredService<IConfiguration>()));
 
     // Orchestrator con sistema de tools multi-provider + ReAct Engine
     services.AddSingleton(sp =>
