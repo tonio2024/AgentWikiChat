@@ -13,15 +13,13 @@ public class RepositoryToolHandler : IToolHandler
 {
     private readonly IVersionControlHandler _versionControlHandler;
     private readonly bool _debugMode;
-    private readonly string _providerType;
 
-    public RepositoryToolHandler(IConfiguration configuration, string providerConfigSection = "SVN")
+    public RepositoryToolHandler(IConfiguration configuration)
     {
         _debugMode = configuration.GetValue("Ui:Debug", true);
-        _providerType = providerConfigSection;
 
         // Crear handler específico usando factory
-        _versionControlHandler = VersionControlHandlerFactory.CreateHandler(configuration, providerConfigSection);
+        _versionControlHandler = VersionControlHandlerFactory.CreateHandler(configuration);
     }
 
     public string ToolName => $"{_versionControlHandler.ProviderName.ToLower()}_operation";

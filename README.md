@@ -223,8 +223,92 @@ dotnet run
 - Seguridad: Bloquea commit, push, pull, add, rm, etc.
 - Compatible con Git 2.0+
 
-### 5. 🔮 RAG (Futuro)
-- Búsqueda vectorial y recuperación de documentos
+### 🆕 5. GitHub Repository (v3.5.0)
+- **`github_operation`**: Ejecuta operaciones de solo lectura en repositorios GitHub usando API REST
+- Operaciones soportadas:
+  - **`log`**: Ver historial de commits
+  - **`show`**: Detalles de un commit específico
+  - **`list`**: Listar archivos y directorios
+  - **`cat`**: Ver contenido de archivos
+  - **`diff`**: Ver diferencias en un commit
+  - **`blame`**: Ver información de autoría
+  - **`branches`**: Listar todas las ramas
+  - **`tags`**: Listar todos los tags
+  - **`info`**: Información completa del repositorio
+- Seguridad: Solo lectura, no permite push, merge, delete, etc.
+- **No requiere cliente local** - Usa GitHub API v3
+- Requiere Personal Access Token para repos privados
+
+### 🆕 Configuración de Git (v3.5.0)
+
+```json
+{
+  "Git": {
+    "Provider": "Git",
+    "RepositoryUrl": "https://github.com/user/repo.git",
+    "Username": "myuser",
+    "Password": "ghp_token_or_password",
+    "WorkingCopyPath": "C:\\Projects\\MyRepo",
+    "CommandTimeout": 60,
+    "EnableLogging": true
+  }
+}
+```
+
+**Parámetros:**
+- **`Provider`**: "Git"
+- **`RepositoryUrl`**: URL del repositorio Git (HTTPS, SSH, local)
+- **`Username`**: Usuario para autenticación (para HTTPS)
+- **`Password`**: Token de acceso personal o contraseña
+- **`WorkingCopyPath`**: Ruta local del repositorio clonado (obligatorio para Git)
+- **`CommandTimeout`**: Timeout en segundos para operaciones Git
+- **`EnableLogging`**: Habilita logging detallado de operaciones
+
+**Nota**: Para GitHub/GitLab, usa Personal Access Token en lugar de contraseña.
+
+### 🆕 Configuración de GitHub (v3.5.0)
+
+```json
+{
+  "GitHub": {
+    "Provider": "GitHub",
+    "RepositoryUrl": "https://github.com/owner/repo",
+    "Username": "your-github-username",
+    "Password": "ghp_YourPersonalAccessToken",
+    "Branch": "main",
+    "CommandTimeout": 30,
+    "EnableLogging": true
+  }
+}
+```
+
+**Parámetros:**
+- **`Provider`**: "GitHub"
+- **`RepositoryUrl`**: URL del repositorio GitHub (sin .git)
+- **`Username`**: Tu nombre de usuario de GitHub
+- **`Password`**: Personal Access Token (obligatorio, obtenerlo en: https://github.com/settings/tokens)
+- **`Branch`**: Rama predeterminada (default: "main")
+- **`CommandTimeout`**: Timeout en segundos para llamadas API
+- **`EnableLogging`**: Habilita logging detallado de operaciones
+
+**Ventajas de GitHub API:**
+- ✅ No requiere cliente local instalado
+- ✅ No requiere clonar el repositorio
+- ✅ Acceso instantáneo a cualquier repositorio
+- ✅ Funciona con repos públicos y privados
+- ✅ 5,000 requests/hora con token
+
+**Obtener Personal Access Token:**
+1. Ve a: https://github.com/settings/tokens
+2. Click en "Generate new token (classic)"
+3. Selecciona scopes: `repo` (o `public_repo` para solo públicos)
+4. Copia el token generado (comienza con `ghp_`)
+5. Úsalo en el campo `Password`
+
+**⚠️ Importante:**
+- El token es sensible, no lo compartas
+- Para repos públicos, el token es opcional (pero con límite de 60 requests/hora)
+- Guarda el token de forma segura (ej: Azure Key Vault, variables de entorno)
 
 ---
 
@@ -253,11 +337,21 @@ RepositoryToolHandler
             │       └── BaseVersionControlHandler (base común)
             │               │
             │               ├── SvnVersionControlHandler
-            │               └── GitVersionControlHandler
+            │               ├── GitVersionControlHandler
+            │               └── GitHubVersionControlHandler  ← 🆕 v3.5.0
             │
-            └── Fácil extensión: Mercurial, TFS, Perforce
+            └── Fácil extensión: GitLab, Bitbucket, Mercurial, TFS, Perforce
 
 ```
+
+**Beneficios:**
+- ✅ Arquitectura modular y extensible
+- ✅ Código reutilizable entre proveedores
+- ✅ Fácil agregar nuevos sistemas de control de versiones
+- ✅ 81% reducción en complejidad
+- ✅ **GitHub sin cliente local** - usa API REST
+
+**Documentación detallada**: [`Docs/VersionControl-Architecture.md`](AgentWikiChat/Docs/VersionControl-Architecture.md)
 
 ## 📁 Estructura del Proyecto
 
@@ -272,6 +366,7 @@ RepositoryToolHandler
 │   │   ├── BaseVersionControlHandler.cs
 │   │   ├── SvnVersionControlHandler.cs
 │   │   ├── GitVersionControlHandler.cs
+│   │   ├── GitHubVersionControlHandler.cs      # 🆕 v3.5.0
 │   │   └── VersionControlHandlerFactory.cs
 │   ├── Handlers/      # Handlers de herramientas
 │   ├── AgentOrchestrator.cs

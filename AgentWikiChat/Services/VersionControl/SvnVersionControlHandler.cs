@@ -32,7 +32,7 @@ public class SvnVersionControlHandler : BaseVersionControlHandler
     public override string ProviderName => "SVN";
 
     public SvnVersionControlHandler(IConfiguration configuration)
-        : base(configuration, "SVN")
+        : base(configuration)
     {
         // Verificar si SVN está instalado (solo una vez)
         if (_svnInstalled == null)
@@ -107,7 +107,7 @@ public class SvnVersionControlHandler : BaseVersionControlHandler
     {
         try
         {
-            return true;
+            //return true;
             LogDebug($"[SVN] Probando conexión con {RepositoryUrl}...");
 
             var args = new List<string> { "info", $"\"{RepositoryUrl}\"" };

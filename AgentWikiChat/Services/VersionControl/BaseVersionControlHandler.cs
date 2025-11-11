@@ -20,13 +20,13 @@ public abstract class BaseVersionControlHandler : IVersionControlHandler
 
     public abstract string ProviderName { get; }
 
-    protected BaseVersionControlHandler(IConfiguration configuration, string configSection)
+    protected BaseVersionControlHandler(IConfiguration configuration)
     {
         Configuration = configuration;
-        var config = configuration.GetSection(configSection);
+        var config = configuration.GetSection("Repository");
 
         RepositoryUrl = config.GetValue<string>("RepositoryUrl")
-            ?? throw new InvalidOperationException($"{configSection}:RepositoryUrl no configurada en appsettings.json");
+            ?? throw new InvalidOperationException("Repository:RepositoryUrl no configurada en appsettings.json");
 
         Username = config.GetValue<string>("Username") ?? "";
         Password = config.GetValue<string>("Password") ?? "";

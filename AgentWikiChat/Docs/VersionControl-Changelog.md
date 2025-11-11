@@ -18,11 +18,13 @@ Refactorizar el sistema de control de versiones para seguir el mismo patrón arqu
 ### 2. Implementaciones
 - ? **`SvnVersionControlHandler`**: Toda la lógica SVN migrada desde el handler monolítico
 - ? **`GitVersionControlHandler`**: Implementación de referencia completa para Git (lista para usar)
+- ? **`GitHubVersionControlHandler`**: Implementación usando GitHub REST API v3 (sin cliente local) ??
 
 ### 3. Extensibilidad
-- ? Fácil agregar nuevos proveedores (Mercurial, TFS, Perforce)
+- ? Fácil agregar nuevos proveedores (Mercurial, TFS, Perforce, GitLab, Bitbucket)
 - ? Reutilización de código común (logging, formateo, validación)
 - ? Configuración unificada para todos los proveedores
+- ? **GitHub sin cliente local** - usa HttpClient para API REST
 
 ---
 
@@ -92,6 +94,7 @@ services.AddSingleton<IToolHandler>(sp =>
 | `BaseVersionControlHandler.cs` | Clase base abstracta | ~120 |
 | `SvnVersionControlHandler.cs` | Implementación SVN | ~550 |
 | `GitVersionControlHandler.cs` | Implementación Git (referencia) | ~500 |
+| `GitHubVersionControlHandler.cs` | Implementación GitHub (nueva) | ~300 |
 | `VersionControlHandlerFactory.cs` | Factory para crear handlers | ~40 |
 
 ### Handler Genérico
@@ -136,6 +139,7 @@ RepositoryToolHandler.cs (~150 líneas) ? RENOMBRADO, genérico
             ??? BaseVersionControlHandler (~120 líneas)
             ?       ??? SvnVersionControlHandler (~550 líneas)
             ?       ??? GitVersionControlHandler (~500 líneas)
+            ?       ??? GitHubVersionControlHandler (~300 líneas)
             ??? VersionControlHandlerFactory (~40 líneas)
 ```
 

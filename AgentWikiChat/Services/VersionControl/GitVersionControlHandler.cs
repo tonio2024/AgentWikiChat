@@ -32,7 +32,7 @@ public class GitVersionControlHandler : BaseVersionControlHandler
     public override string ProviderName => "Git";
 
     public GitVersionControlHandler(IConfiguration configuration)
-        : base(configuration, "Git")
+        : base(configuration)
     {
         // Verificar si Git está instalado (solo una vez)
         if (_gitInstalled == null)
