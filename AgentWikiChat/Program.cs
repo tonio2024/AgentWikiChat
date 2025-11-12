@@ -75,7 +75,7 @@ try
     services.AddSingleton<IToolHandler, WikipediaHandler>();  // Expone 2 tools: search + article
     services.AddSingleton<IToolHandler, RAGToolHandler>();     // Para RAG general (futuro)
     services.AddSingleton<IToolHandler>(sp => new DatabaseToolHandler(sp.GetRequiredService<IConfiguration>()));
-    services.AddSingleton<IToolHandler, SVNRepositoryToolHandler>();
+    services.AddSingleton<IToolHandler>(sp => new RepositoryToolHandler(sp.GetRequiredService<IConfiguration>()));
 
     // Orchestrator con sistema de tools multi-provider + ReAct Engine
     services.AddSingleton(sp =>
@@ -146,7 +146,7 @@ try
     Console.WriteLine($"=== {appName} v{version} ===");
     Console.WriteLine($"🤖 Proveedor IA: {toolService.GetProviderName()}");
     Console.WriteLine($"🎯 Sistema: Multi-Provider Tool Calling + ReAct Pattern");
-    Console.WriteLine($"🌐 Proveedores: Ollama, OpenAI, LM Studio, Anthropic Claude");
+    Console.WriteLine($"🌐 Proveedores: Ollama, OpenAI, LM Studio, Anthropic, Gemini");
     Console.WriteLine($"🧠 ReAct Engine: {(agentConfig.EnableReActPattern ? "✅ ACTIVADO" : "⚠️ DESACTIVADO")}");
     Console.WriteLine($"🔗 Multi-Tool Loop: {(agentConfig.EnableMultiToolLoop ? "✅ ACTIVADO" : "⚠️ DESACTIVADO")} (máx {agentConfig.MaxIterations} iteraciones)");
 

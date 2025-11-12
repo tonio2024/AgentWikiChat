@@ -5,7 +5,7 @@ namespace AgentWikiChat.Services.AI;
 
 /// <summary>
 /// Factory para crear el servicio de Tool Calling apropiado según configuración.
-/// Soporta: Ollama, OpenAI, LM Studio, Anthropic Claude.
+/// Soporta: Ollama, OpenAI, LM Studio, Anthropic Claude, Google Gemini.
 /// </summary>
 public class ToolCallingServiceFactory
 {
@@ -35,6 +35,7 @@ public class ToolCallingServiceFactory
             "openai" => new OpenAIToolService(httpClient, configuration),
             "lmstudio" => new LMStudioToolService(httpClient, configuration),
             "anthropic" => new AnthropicToolService(httpClient, configuration),
+            "gemini" => new GeminiToolService(httpClient, configuration),
             _ => throw new NotSupportedException($"Proveedor '{providerType}' no soportado. " +
                                                 $"Opciones: {string.Join(", ", GetSupportedProviders())}")
         };
@@ -45,6 +46,6 @@ public class ToolCallingServiceFactory
     /// </summary>
     public static string[] GetSupportedProviders()
     {
-        return new[] { "ollama", "openai", "lmstudio", "anthropic" };
+        return new[] { "ollama", "openai", "lmstudio", "anthropic", "gemini" };
     }
 }

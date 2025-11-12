@@ -1,50 +1,83 @@
+using AgentWikiChat.Models;
 using Microsoft.Extensions.Configuration;
 
 namespace AgentWikiChat.Services.Database;
 
 /// <summary>
 /// Factory para crear handlers de base de datos según configuración.
+/// Ahora soporta múltiples proveedores configurados (patrón multi-provider).
 /// </summary>
 public static class DatabaseHandlerFactory
 {
     /// <summary>
-    /// Crea el handler apropiado según el tipo de base de datos configurado.
+    /// Crea el handler apropiado según el proveedor activo configurado.
     /// </summary>
     public static IDatabaseHandler CreateHandler(IConfiguration configuration)
     {
-        var dbConfig = configuration.GetSection("Database");
+        var dbSection = configuration.GetSection("Database");
         
-        var providerType = dbConfig.GetValue<string>("Provider")?.ToLowerInvariant() 
-            ?? throw new InvalidOperationException("Database:Provider no configurado en appsettings.json");
+        var activeProvider = dbSection.GetValue<string>("ActiveProvider")
+            ?? throw new InvalidOperationException("Database:ActiveProvider no configurado en appsettings.json");
 
-        var connectionString = dbConfig.GetValue<string>("ConnectionString")
-            ?? throw new InvalidOperationException("Database:ConnectionString no configurada en appsettings.json");
+        var providers = dbSection.GetSection("Providers").Get<List<DatabaseProviderConfig>>()
+            ?? throw new InvalidOperationException("Database:Providers no configurado en appsettings.json");
 
-        var commandTimeout = dbConfig.GetValue("CommandTimeout", 30);
+        var providerConfig = providers.FirstOrDefault(p => p.Name == activeProvider)
+            ?? throw new InvalidOperationException($"Proveedor de base de datos '{activeProvider}' no encontrado en Database:Providers");
 
-        return providerType switch
+        return CreateHandlerFromConfig(providerConfig);
+    }
+
+    /// <summary>
+    /// Crea un handler a partir de la configuración de un proveedor específico.
+    /// </summary>
+    private static IDatabaseHandler CreateHandlerFromConfig(DatabaseProviderConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.ConnectionString))
         {
-            "sqlserver" => new SqlServerDatabaseHandler(connectionString, commandTimeout),
-            "postgresql" or "postgres" => new PostgreSqlDatabaseHandler(connectionString, commandTimeout),
+            throw new InvalidOperationException($"ConnectionString no configurada para el proveedor '{config.Name}'");
+        }
+
+        return config.Type.ToLowerInvariant() switch
+        {
+            "sqlserver" => new SqlServerDatabaseHandler(config.ConnectionString, config.CommandTimeout),
+            "postgresql" or "postgres" => new PostgreSqlDatabaseHandler(config.ConnectionString, config.CommandTimeout),
             _ => throw new NotSupportedException(
-                $"Proveedor de base de datos '{providerType}' no soportado. " +
-                $"Opciones disponibles: {string.Join(", ", GetSupportedProviders())}")
+                $"Tipo de base de datos '{config.Type}' no soportado para el proveedor '{config.Name}'. " +
+                $"Tipos disponibles: {string.Join(", ", GetSupportedTypes())}")
         };
     }
 
     /// <summary>
-    /// Obtiene la lista de proveedores soportados.
+    /// Obtiene la lista de tipos de base de datos soportados.
     /// </summary>
-    public static string[] GetSupportedProviders()
+    public static string[] GetSupportedTypes()
     {
         return new[] { "sqlserver", "postgresql", "postgres" };
     }
 
     /// <summary>
-    /// Verifica si un proveedor está soportado.
+    /// Verifica si un tipo de base de datos está soportado.
     /// </summary>
-    public static bool IsProviderSupported(string provider)
+    public static bool IsTypeSupported(string type)
     {
-        return GetSupportedProviders().Contains(provider.ToLowerInvariant());
+        return GetSupportedTypes().Contains(type.ToLowerInvariant());
+    }
+
+    /// <summary>
+    /// Obtiene la configuración del proveedor activo.
+    /// </summary>
+    public static DatabaseProviderConfig GetActiveProviderConfig(IConfiguration configuration)
+    {
+        var dbSection = configuration.GetSection("Database");
+        
+        var activeProvider = dbSection.GetValue<string>("ActiveProvider")
+            ?? throw new InvalidOperationException("Database:ActiveProvider no configurado");
+
+        var providers = dbSection.GetSection("Providers").Get<List<DatabaseProviderConfig>>()
+            ?? throw new InvalidOperationException("Database:Providers no configurado");
+
+        return providers.FirstOrDefault(p => p.Name == activeProvider)
+            ?? throw new InvalidOperationException($"Proveedor '{activeProvider}' no encontrado");
     }
 }
